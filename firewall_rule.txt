@@ -1,0 +1,3 @@
+#firewall_rule.txt
+# Example rules (source MAC, destination MAC)
+00:00:00:00:00:11,00:00:00:00:00:12
