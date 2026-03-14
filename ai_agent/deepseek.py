@@ -1,14 +1,17 @@
 """
-AI Agent using DeepSeek API (OpenAI-compatible) + Local ML tools (RF classifiers)
+AI Agent using Ollama (OpenAI-compatible) + Local ML tools (RF classifiers)
 
 Requirements:
-  pip install requests joblib numpy
+  pip install requests joblib numpy python-dotenv
 
-Set API key (Windows PowerShell):
-  $env:DEEPSEEK_API_KEY="YOUR_KEY"
+Setup Ollama:
+  Install Ollama from https://ollama.ai/
+  Run: ollama serve
+  Pull a model: ollama pull llama3.2
+  Optional: Set $env:OLLAMA_MODEL="your_model"
 
 Run:
-  python deepseek_agent.py
+  python deepseek.py
 """
 
 from __future__ import annotations
@@ -26,14 +29,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ----------------------------
-# DeepSeek Config
+# Ollama Config
 # ----------------------------
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
-DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")  # tool calling works well with deepseek-chat
-
-if not DEEPSEEK_API_KEY:
-    raise RuntimeError("Missing DEEPSEEK_API_KEY environment variable")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")  # default model, adjust as needed
 
 
 # ----------------------------
@@ -124,12 +123,12 @@ TOOLS_SCHEMA: List[Dict[str, Any]] = [
 
 
 # ----------------------------
-# DeepSeek client (requests)
+# Ollama client (requests)
 # ----------------------------
-class DeepSeekClient:
-    def __init__(self, base_url: str = DEEPSEEK_BASE_URL, model: str = DEEPSEEK_MODEL, timeout: int = 120):
-        self.base_url = base_url
-        self.model = model
+class OllamaClient:
+    def __init__(self, timeout: int = 120):
+        self.base_url = OLLAMA_BASE_URL
+        self.model = OLLAMA_MODEL
         self.timeout = timeout
 
     def chat(
@@ -149,13 +148,12 @@ class DeepSeekClient:
             payload["tool_choice"] = "auto"
 
         headers = {
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
             "Content-Type": "application/json",
         }
 
         r = requests.post(url, headers=headers, json=payload, timeout=self.timeout)
         if not r.ok:
-            raise RuntimeError(f"DeepSeek error {r.status_code}: {r.text}")
+            raise RuntimeError(f"Ollama error {r.status_code}: {r.text}")
 
         return r.json()
 
@@ -183,9 +181,9 @@ class AgentState:
         self.messages.append(msg)
 
 
-class DeepSeekAgent:
+class OllamaAgent:
     def __init__(self):
-        self.client = DeepSeekClient()
+        self.client = OllamaClient()
         self.state = AgentState()
         self.state.add("system", SYSTEM_PROMPT)
 
@@ -248,8 +246,9 @@ class DeepSeekAgent:
 
 
 def main():
-    agent = DeepSeekAgent()
-    print(f"✅ DeepSeek Agent ready | base_url={DEEPSEEK_BASE_URL} | model={DEEPSEEK_MODEL}")
+    agent = OllamaAgent()
+    client = OllamaClient()  # to get config for print
+    print(f"✅ Ollama Agent ready | base_url={client.base_url} | model={client.model}")
     print("Type 'exit' to quit.\n")
 
     while True:
